@@ -1,3 +1,3 @@
 # polysomes
 
-This repository contains the raw data and analysis files for our current work on correspondence between polysome profiling data and ribosome footprinting data.
+This repository contains the raw data and analysis scripts for our current work on correspondence between polysome profiling data and ribosome footprinting data.
