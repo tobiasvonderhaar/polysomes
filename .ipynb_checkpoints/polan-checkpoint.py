@@ -219,3 +219,115 @@ def plot_poly(peak_vols):
         sum_trace += this_peak
     return x,sum_trace
     
+    
+    
+    
+def compare_profiles(dats1, dats2, dats1_columns = ['ORF','RNA_Prints','Ribo_Prints'],
+                     dats2_columns = ['ORF','RNA_Prints','Ribo_Prints'],colors =['green','red'],conditions = ['Cond. 1','Cond. 2'],return_df=False):
+    
+    """Computes and displays the predominant movements of transcripts between polysome peaks for two conditions."""
+    
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    import numpy as np
+    
+    def counts_to_RPKM(dats):
+        #read in the gene length info dataset
+        genes = pd.read_csv('Data/sacCer3 genes.csv')
+        #combine input dataset with gene length information 
+        dats = dats.merge(genes[['name','length']],how='inner',left_on='ORF',right_on='name')[['ORF','RNA_Prints','Ribo_Prints','length']]
+        #calculate RPKM
+        dats['RNA_RPKM'] = dats['RNA_Prints']/(dats['length']/1000) 
+        dats = dats.drop(['RNA_Prints','length'],axis=1)
+        return dats
+    
+    def calc_RperR(Rdats, RNA_content = 60000, ribo_content = 200000, frac_act = 0.85,poly_limit = 30):
+        #determine conversion factor from Ribo_Prints to no of Ribosomes
+        RiboPrints2Ribos = (ribo_content * frac_act) / sum(Rdats['Ribo_Prints'])
+        Rdats['Ribos_bound'] = Rdats['Ribo_Prints']*RiboPrints2Ribos
+        #determine conversion factor from RNA_RPKM to no of RNAs
+        RNARPKM2RNAs = RNA_content / sum(Rdats['RNA_RPKM'])
+        Rdats['RNAs_per_cell'] = Rdats['RNA_RPKM']*RNARPKM2RNAs
+        #calculate the ribosome load per RNA (RperR)
+        Rdats['RperR'] = np.round(Rdats['Ribos_bound'] / Rdats['RNAs_per_cell'])
+        Rdats=Rdats.dropna()
+        #remove rows where the number of ribosomes per RNA is > poly_limit
+        Rdats = Rdats.loc[Rdats['RperR'] <= poly_limit]
+        return Rdats
+    
+    #prepare datasets and compute RperR values via RNA RPKM values
+    dats1 = dats1[dats1_columns]
+    dats1.columns = ['ORF','RNA_Prints','Ribo_Prints']
+    dats1 = counts_to_RPKM(dats1) 
+    dats1 = calc_RperR(dats1)
+    dats2 = dats2[dats2_columns]
+    dats2.columns = ['ORF','RNA_Prints','Ribo_Prints']
+    dats2 = counts_to_RPKM(dats2)
+    dats2 = calc_RperR(dats2)
+    
+    #compute column movements for individual transcripts
+    fromto = dats1[['ORF','RperR']].merge(dats2[['ORF','RperR']],how = 'inner',on = 'ORF')
+    fromto.columns = ['ORF','from','to']
+    
+    #calculate main destinations for each origin peak
+    from_unique = fromto['from'].unique()
+    from_unique.sort()
+    from_vec,to_vec,dir_vec,linewidth_vec=[],[],[],[]
+    for from_idx in range(len(from_unique)):
+        this_from  = fromto.loc[fromto['from'] == from_unique[from_idx]]
+        this_to_unique = this_from['to'].unique()
+        for to_idx in range(len(this_to_unique)):
+            from_vec.append(from_unique[from_idx])
+            to_vec.append(this_to_unique[to_idx])
+            if from_unique[from_idx] < this_to_unique[to_idx]:
+                dir_vec.append('up')
+            elif from_unique[from_idx] > this_to_unique[to_idx]:
+                dir_vec.append('down')
+            else:
+                dir_vec.append('nc')
+            linewidth_vec.append(np.log(this_from.loc[this_from['to']==this_to_unique[to_idx]].shape[0])*1.5+0.1)
+            
+    df = pd.DataFrame({'From':from_vec,'To':to_vec,'Direction':dir_vec,'Linewidth':linewidth_vec})
+    up_df = df.loc[df['Direction']=='up']
+    down_df = df.loc[df['Direction']=='down']
+     
+    #prepare main figure
+    fig = plt.figure(constrained_layout=True,figsize=(5,3))
+    gs = fig.add_gridspec(2, 6)
+    ax1 = fig.add_subplot(gs[0, :-2])
+    ax2 = fig.add_subplot(gs[1, :-2])
+    ax3 = fig.add_subplot(gs[0:, -2:])
+    ax3.axis('off')
+    
+    for idx in range(up_df.shape[0]):
+        ax1.plot([up_df.iloc[idx]['From'],up_df.iloc[idx]['To']],[3,1],linewidth=up_df.iloc[idx]['Linewidth'],color=colors[0],alpha=0.2)
+    ax1.set_ylim(0.9,3.1)
+    ax1.set_yticks([3,1])
+    ax1.set_yticklabels([conditions[0],conditions[1]])
+    ax1.set_xlim((0,30))
+    
+                                                                                         
+    for idx in range(down_df.shape[0]):
+        ax2.plot([down_df.iloc[idx]['From'],down_df.iloc[idx]['To']],[3,1],linewidth=down_df.iloc[idx]['Linewidth'],color=colors[1],alpha=0.2)
+    ax2.set_ylim(0.9,3.1)
+    ax2.set_yticks([3,1])
+    ax2.set_yticklabels([conditions[0],conditions[1]])
+    ax2.set_xlabel('Polysome number')
+    ax2.set_xlim((0,30))
+    
+    #prepare legend for line width
+    ax3.set_ylim((0,10))
+    ax3.set_xlim((0,10))
+    ax3.text(8,5,'Number of mRNAs',verticalalignment='center',rotation = 90)
+    ref_widths = [2,20,200]
+    log_ref_widths = [np.log(w)*1.5+0.1 for w in ref_widths]
+        
+    y_pos = [3.5,5,6.5]
+    for idx in [0,1,2]:
+        ax3.plot([0.5,3.5],[y_pos[idx],y_pos[idx]],linewidth=log_ref_widths[idx],c='black')
+        ax3.text(4.5,y_pos[idx],str(ref_widths[idx]),verticalalignment='center')
+    
+    if return_df:
+        return fig,fig.axes,df
+    else:
+        return fig,fig.axes
