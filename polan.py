@@ -223,7 +223,7 @@ def plot_poly(peak_vols):
     
     
 def compare_profiles(dats1, dats2, dats1_columns = ['ORF','RNA_Prints','Ribo_Prints'],
-                     dats2_columns = ['ORF','RNA_Prints','Ribo_Prints'],colors =['green','red'],conditions = ['Cond. 1','Cond. 2'],return_df=False):
+                     dats2_columns = ['ORF','RNA_Prints','Ribo_Prints'],colors =['royalblue','gold'],conditions = ['Cond. 1','Cond. 2'],return_df=False):
     
     """Computes and displays the predominant movements of transcripts between polysome peaks for two conditions."""
     
@@ -272,7 +272,7 @@ def compare_profiles(dats1, dats2, dats1_columns = ['ORF','RNA_Prints','Ribo_Pri
     #calculate main destinations for each origin peak
     from_unique = fromto['from'].unique()
     from_unique.sort()
-    from_vec,to_vec,dir_vec,linewidth_vec=[],[],[],[]
+    from_vec,to_vec,dir_vec,alpha_vec=[],[],[],[]
     for from_idx in range(len(from_unique)):
         this_from  = fromto.loc[fromto['from'] == from_unique[from_idx]]
         this_to_unique = this_from['to'].unique()
@@ -285,9 +285,10 @@ def compare_profiles(dats1, dats2, dats1_columns = ['ORF','RNA_Prints','Ribo_Pri
                 dir_vec.append('down')
             else:
                 dir_vec.append('nc')
-            linewidth_vec.append(np.log(this_from.loc[this_from['to']==this_to_unique[to_idx]].shape[0])*1.5+0.1)
+            alpha_vec.append(np.log(this_from.loc[this_from['to']==this_to_unique[to_idx]].shape[0]))
+    alpha_vec_scaled = [(alpha)/(max(alpha_vec)*0.7) for alpha in alpha_vec]
             
-    df = pd.DataFrame({'From':from_vec,'To':to_vec,'Direction':dir_vec,'Linewidth':linewidth_vec})
+    df = pd.DataFrame({'From':from_vec,'To':to_vec,'Direction':dir_vec,'Alpha':alpha_vec_scaled})
     up_df = df.loc[df['Direction']=='up']
     down_df = df.loc[df['Direction']=='down']
      
@@ -300,7 +301,7 @@ def compare_profiles(dats1, dats2, dats1_columns = ['ORF','RNA_Prints','Ribo_Pri
     ax3.axis('off')
     
     for idx in range(up_df.shape[0]):
-        ax1.plot([up_df.iloc[idx]['From'],up_df.iloc[idx]['To']],[3,1],linewidth=up_df.iloc[idx]['Linewidth'],color=colors[0],alpha=0.2)
+        ax1.plot([up_df.iloc[idx]['From'],up_df.iloc[idx]['To']],[3,1],linewidth=4,color=colors[0],alpha=up_df.iloc[idx]['Alpha'])
     ax1.set_ylim(0.9,3.1)
     ax1.set_yticks([3,1])
     ax1.set_yticklabels([conditions[0],conditions[1]])
@@ -308,7 +309,7 @@ def compare_profiles(dats1, dats2, dats1_columns = ['ORF','RNA_Prints','Ribo_Pri
     
                                                                                          
     for idx in range(down_df.shape[0]):
-        ax2.plot([down_df.iloc[idx]['From'],down_df.iloc[idx]['To']],[3,1],linewidth=down_df.iloc[idx]['Linewidth'],color=colors[1],alpha=0.2)
+        ax2.plot([down_df.iloc[idx]['From'],down_df.iloc[idx]['To']],[3,1],linewidth=4,color=colors[1],alpha=down_df.iloc[idx]['Alpha'])
     ax2.set_ylim(0.9,3.1)
     ax2.set_yticks([3,1])
     ax2.set_yticklabels([conditions[0],conditions[1]])
@@ -318,14 +319,14 @@ def compare_profiles(dats1, dats2, dats1_columns = ['ORF','RNA_Prints','Ribo_Pri
     #prepare legend for line width
     ax3.set_ylim((0,10))
     ax3.set_xlim((0,10))
-    ax3.text(8,5,'Number of mRNAs',verticalalignment='center',rotation = 90)
-    ref_widths = [2,20,200]
-    log_ref_widths = [np.log(w)*1.5+0.1 for w in ref_widths]
+    ax3.text(8.5,5,'Number of mRNAs',verticalalignment='center',rotation = 90)
+    ref_alphas = [0.1,0.4,0.7]
+    ref_values = [np.exp(max(alpha_vec)/10),np.exp(max(alpha_vec)/2),np.exp(max(alpha_vec))]
         
     y_pos = [3.5,5,6.5]
     for idx in [0,1,2]:
-        ax3.plot([0.5,3.5],[y_pos[idx],y_pos[idx]],linewidth=log_ref_widths[idx],c='black')
-        ax3.text(4.5,y_pos[idx],str(ref_widths[idx]),verticalalignment='center')
+        ax3.plot([0.5,3.5],[y_pos[idx],y_pos[idx]],linewidth=4,c='black',alpha = ref_alphas[idx])
+        ax3.text(4.5,y_pos[idx],str(int(ref_values[idx])),verticalalignment='center')
     
     if return_df:
         return fig,fig.axes,df
