@@ -105,43 +105,41 @@ def fit_peaks(peakxs,grad_end,mode='mammal'):
     peakfun = logfunc(xfun,params[0],params[1],params[2])
     return [peakfit, [xfun,peakfun]]
 
-def fp2poly(dataset, from_file = True, use_ref_RNA = False, RNA_content = 60000, ribo_content = 200000, frac_act = 0.85, frac_split = 0.30, poly_limit=30, remove_spurious_RNAs = True,):
+def fp2poly(df, df_columns=['ORF','Ribo_Prints','RNA_Prints'], RNA_content = 60000, ribo_content = 200000, include_idle = True, frac_act = 0.85, frac_split = 0.30, poly_limit=30, remove_spurious_RNAs = True,):
     """Calculates peak volumes of a polysome profile corresponding to an input footprinting dataset."""
     
     import pandas as pd
     import numpy as np
     
-    genes = pd.read_csv('Data/sacCer3 genes.csv')
+    #####assemble a processible dataset
     
-    if from_file:
-        ######read in dataset and validate that it has columns with required names
-        if dataset[-4:] != '.csv':
-            filename = dataset + '.csv'
-        else:
-            filename = dataset
-        dats = pd.read_csv("Data/" + filename)
+    #check whether sepcified columns exist
+    if all(elem in df.columns  for elem in df_columns):
+        dats = df[df_columns]
     else:
-        dats = dataset
-        
-    if ('ORF' and 'Ribo_Prints') not in dats.columns:
-        print('One or more required columns are missing.')
+        print('Specified columns do not exist in data frame. Available columns include: \n' + df.columns)
         return
     
-    if use_ref_RNA:
-        if 'RNA_prints' in dats.columns:
-            dats = dats.drop('RNA_Prints',axis=1)
-    
-    if 'RNA_Prints' not in dats.columns:
+    #check whether correct number of columns was given, add reference RNA-Seq data if required
+    if len(df_columns) == 2:
+        dats.columns = ['ORF','Ribo_Prints']
         RNA_ref = pd.read_csv('Data/RNA_reference.csv')
         dats = dats.merge(RNA_ref,how='inner',on='ORF')
-        print('Using reference mRNA data.')
+        print('No mRNA data specified, using reference RNA-Seq data.')
+    elif len(df_columns) == 3:
+        dats.columns = ['ORF','Ribo_Prints','RNA_Prints']
+    else:
+        print('Incorrect column number. \nfp2poly requires two or three columns in this order: \n1) gene names, 2) Ribo-Seq counts, 3) (optional) RNA-Seq counts')
+        return
     
-    #remove datasets where either the RNA prints or Ribo prints are 0
+    #remove rows where either the RNA prints or Ribo prints are 0 (these do not contribute information to the profile)
     dats = dats.loc[dats['RNA_Prints'] > 0]
     dats = dats.loc[dats['Ribo_Prints'] > 0]
     
-    ######convert reads to RPKM
+    ######convert Ribo-Seq reads to RPKM
     
+    #read in gene length information
+    genes = pd.read_csv('Data/sacCer3 genes.csv')
     #combine input dataset with gene length information 
     dats = dats.merge(genes[['name','length']],how='inner',left_on='ORF',right_on='name')[['ORF','RNA_Prints','Ribo_Prints','length']]
     #calculate RPKM
@@ -168,11 +166,12 @@ def fp2poly(dataset, from_file = True, use_ref_RNA = False, RNA_content = 60000,
     
     #make an array to hold the relative weights for each polysome class
     poly_array = np.zeros(poly_limit+2)
-    #assign idle ribosomes to the first three peaks, based on the fraction of active ribosomes and the fraction of split inactive ribosomes
-    idle_ribos = (1 - frac_act) * 200000
-    poly_array[0] += idle_ribos * frac_split * 0.34
-    poly_array[1] += idle_ribos * frac_split * 0.66
-    poly_array[2] += idle_ribos * (1-frac_split)
+    #if indicated, assign idle ribosomes to the first three peaks, based on the fraction of active ribosomes and the fraction of split inactive ribosomes
+    if include_idle:
+        idle_ribos = (1 - frac_act) * 200000
+        poly_array[0] += idle_ribos * frac_split * 0.34
+        poly_array[1] += idle_ribos * frac_split * 0.66
+        poly_array[2] += idle_ribos * (1-frac_split)
     #go through each row of dats and add ribosomes to the appropriate peak
     for row in range(dats.shape[0]):
         this_RperR = dats.iloc[row]['RperR']
@@ -194,7 +193,7 @@ def fp2poly(dataset, from_file = True, use_ref_RNA = False, RNA_content = 60000,
     return poly_array
 
 def plot_poly(peak_vols):
-    """Plots a polysome profile from a list of peak volumes computed by fp2poly"""
+    """Returns x and y coordinates of a polysome profile from a list of peak volumes computed by fp2poly"""
     
     import numpy as np
     
