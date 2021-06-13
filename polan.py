@@ -1,3 +1,12 @@
+"""polan provides functions for simulating polysome profiles from other types of data.
+
+The main functions intended for users are:
+
+fp2poly: models polysome peak information from a set of ribosome footrinting data
+plot_poly: generates a plot using output from fp2poly
+compare_profiles: compares two ribosome footprinting datasets based on analyses of mRNA shifts between peaks in a corresponding polysomes 
+"""
+
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt

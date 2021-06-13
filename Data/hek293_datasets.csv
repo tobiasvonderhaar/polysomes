@@ -1,0 +1,8 @@
+SeriesID,Cellline,Includes_mRNA,Temp,Medium,CHX,Publication,Lab,Experiment,Notes
+GSE31539,HEK293,T,37,"DMEM, 10% FBS, 5% CO2",B,22199352,Nicchita,ER Association of polysomes,"Combined ""Cyt"" and ""ER"" data"
+GSE102040,HEK293T,T,37,"DMEM, 10% FBS, 1% penicillin/streptomycin",B,29107537,Yi,N1-methyladenosine methylome,
+GSE105175,HEK293 T-Rex Flp-In,T,37,"DMEM, 10% FBS, 1% penicillin/streptomycin",B,31160600,Paeschke,DHX36 role in resolving G-rich structures,Wildtype Riboseq and Wildtype RNA-seq samples
+GSE129194,HEK293T,T,37,"DMEM, 10% FBS",B,31767846,Qian,m6A modifications,shScram_Ribo_seq and shScram_RNA_seq replicates
+GSE132703,HEK293T,T,37,"DMEM, 10% FBS, 1% penicillin/streptomycin, DMSO",N,32094190,Thoreen,LARP control of TOP mRNAs,hek293_dmso_RPF and hek293_dmo_RNA samples
+GSE140366,HEK293 T-Rex Flp-In,T,37,"DMEM, 10% FBS, 1% penicillin/ streptomycin. 0.1% zeocin",B,32821933,Grimson,miRNA targets,empty control vector samples
+GSE159210,HEK-TtH,T,37,"DMEM, 10% FBS, 1% penicillin/ streptomycin, 5% CO2",B,,Qian,Initiation pausing,Ribo_Seq_Control and RNA_Seq_Control samples
